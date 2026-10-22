@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
+      - ./data:/app/data
+      - ./logs:/app/logs                  # audit log, kept on your machine
+    environment:
+      - DB_PATH=data/messages.db
+      - AUDIT_LOG_FILE=logs/audit.log
+      # Overridable so test runs can use config/users.example.json (scripts/run_tests.py)
+      - USERS_FILE=${USERS_FILE:-config/users.json}
+      - SSL_CERTFILE=certs/server.crt
+      - SSL_KEYFILE=certs/server.key

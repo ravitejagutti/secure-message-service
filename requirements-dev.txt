@@ -1,0 +1,7 @@
+-r server/requirements.txt
+-e ./client
+pytest
+pytest-playwright
+httpx
+pytest-html
+cryptography
