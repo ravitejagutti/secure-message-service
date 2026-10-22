@@ -85,14 +85,25 @@ with MessageClient("https://localhost:8443", token="<api token>") as client:
 One command runs everything: unit tests first, then it builds and starts the server, runs the API, CLI and Playwright tests, and brings the server down again.
 
 ```bash
-python scripts/run_tests.py --install    # first time / CI: installs test dependencies and Chromium
-python scripts/run_tests.py              # all suites
-python scripts/run_tests.py unit         # one suite: unit, api or ui
-python scripts/run_tests.py --no-build   # against a server that's already running
+# Server already running (e.g. from "Run the app"): test it as it is
+python scripts/run_tests.py --install --no-build   # first time
+python scripts/run_tests.py --no-build             # all suites
+python scripts/run_tests.py api --no-build         # one suite (suite name goes first)
+
+# No server running: the runner starts its own, tests, and stops it
+python scripts/run_tests.py --install              # first time / CI: installs test dependencies and Chromium
+python scripts/run_tests.py                        # all suites: unit first, then API, CLI and UI
+python scripts/run_tests.py unit                   # unit tests only (no server needed)
+python scripts/run_tests.py api                    # API + CLI tests
+python scripts/run_tests.py ui                     # Playwright tests
 python scripts/run_tests.py ui --headed --slowmo 1000   # watch the browser tests
 ```
 
+Without `--no-build`, the runner starts and stops its own server, and it refuses to run if one is already up: stop it first with `docker compose down`, or use the `--no-build` commands.
+
 If the unit tests fail, the run stops there without starting the server. Each run writes a timestamped HTML report and log to `reports/`; failing UI tests also save a Playwright trace and screenshot.
+
+**Pre-commit hook:** the unit tests also run before every `git commit` and block it if one fails. Enable it once per clone, with the venv active: `pre-commit install` (installed by `requirements-dev.txt` / `--install`).
 
 | Suite | What it checks |
 | --- | --- |
