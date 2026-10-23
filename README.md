@@ -52,6 +52,8 @@ To create your own credentials instead: `python scripts/make_user.py alice` (pri
 - **Web page:** open https://localhost:8443/ and log in. The browser shows "Not secure" because the certificate is self-signed; the connection is still encrypted.
 - **API docs:** https://localhost:8443/docs. Click **Authorize** and paste the token under **HTTPBearer**.
 
+**Stop the server:** press `Ctrl+C` in the terminal running `docker compose up` (or, if it runs in the background with `-d`, use `docker compose down`). Messages in `./data` and the audit log in `./logs` are kept for the next start.
+
 ### Use the client
 
 ```bash
