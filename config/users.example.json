@@ -1,0 +1,7 @@
+[
+  {
+    "username": "alice",
+    "password_bcrypt": "$2b$12$hg0HID5FAuSowepoQWaSm.nRnYnrA2qJ0LfAIBheBvC8HfoDoMJIe",
+    "api_token_sha256": "13e74f8feb62f705ba48347e4e245ad6a10d97b3e2dbd32ab9c2dc45c48241fe"
+  }
+]

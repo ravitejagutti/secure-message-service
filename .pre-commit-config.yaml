@@ -1,0 +1,14 @@
+# Runs the unit tests before every commit and blocks the commit if one fails.
+# Enable once per clone (with the venv active):  pre-commit install
+# Skip in an emergency:                           git commit --no-verify
+repos:
+  - repo: local
+    hooks:
+      - id: unit-tests
+        name: unit tests (pytest -m unit)
+        # -o addopts= : skip the HTML report and Playwright options from pytest.ini;
+        # the unit tests need neither, and a commit should stay fast and quiet.
+        entry: python -m pytest -m unit -q -o addopts=
+        language: system      # uses the python of your active venv
+        types: [python]       # only when a .py file is part of the commit
+        pass_filenames: false # always run the whole unit suite (~1 s)

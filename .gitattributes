@@ -1,0 +1,4 @@
+# Keep Linux line endings (LF) in every checkout, including on Windows,
+# so files copied into the Linux container are identical everywhere.
+* text=auto eol=lf
+*.png binary
