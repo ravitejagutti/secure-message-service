@@ -105,6 +105,8 @@ If the unit tests fail, the run stops there without starting the server. Each ru
 
 **Pre-commit hook:** the unit tests also run before every `git commit` and block it if one fails. Enable it once per clone, with the venv active: `pre-commit install` (installed by `requirements-dev.txt` / `--install`).
 
+**CI:** GitHub Actions (`.github/workflows/tests.yml`) runs on every pull request (drafts skipped) and on pushes to `main`: the unit tests first, then, only if they pass, the same `python scripts/run_tests.py --install` on a fresh Linux machine. The HTML reports and logs are attached to each run.
+
 | Suite | What it checks |
 | --- | --- |
 | Unit | Redaction of each data type, false positives (invalid IPs, Luhn-failing numbers, phone numbers, dates), audit log format |
@@ -137,5 +139,5 @@ An architecture diagram, the main decisions (redaction on write, regex + validat
 - **Authorization.** Restrict delete to the message's author (return 403 otherwise), and optionally let each user see only their own messages.
 - **Update endpoint.** Not required; if added, updates must also go through `redact()`.
 - **Container hardening.** Run as a non-root user, add a health check to `docker-compose.yml`, and close the database connection on shutdown.
-- **CI.** A pipeline running the unit tests on every push and the full suite against a freshly built container.
-- **Test runner built on standard tools.** `scripts/run_tests.py` is hand-written to get fast feedback and a guaranteed server teardown in one command. In a team project I'd use nox sessions (`unit`, `api`, `ui`) in place of the script, a pytest session fixture with testcontainers to start and stop the server, and CI stages (integration only after unit passes) for fast feedback. That also gives one report per run instead of two.
+- **Merge gate.** Make the `unit` and `integration` checks required before merging into `main` (a branch ruleset), so a red pipeline blocks the merge.
+- **Test runner built on standard tools.** `scripts/run_tests.py` is hand-written to get fast feedback and a guaranteed server teardown in one command. In a team project I'd use nox sessions (`unit`, `api`, `ui`) in place of the script, a pytest session fixture with testcontainers to start and stop the server, with the unit/integration split kept as CI stages (as in the pipeline). That also gives one report per run instead of two.
