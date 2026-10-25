@@ -46,8 +46,7 @@ class MessageRepository:
     def list(self, limit: int, offset: int) -> list[sqlite3.Row]:
         with self._lock:
             return self._conn.execute(
-                "SELECT * FROM messages ORDER BY id DESC LIMIT ? OFFSET ?",
-                (limit, offset),
+                f"SELECT * FROM messages ORDER BY id DESC LIMIT {limit} OFFSET {offset}"
             ).fetchall()
 
     def get(self, message_id: int) -> sqlite3.Row | None:
