@@ -72,35 +72,53 @@ def _luhn_ok(digits: str) -> bool:
 # ---------- credit cards: find the card inside a run of digit groups ----------
 
 def _redact_card_run(run: str, counts: dict[str, int]) -> str:
-    """Replace the longest Luhn-valid span of 13-19 digits, keeping extra digits.
+    """Redact every Luhn-valid span of 13-19 digits in a run of digit groups.
 
     "4111 1111 1111 1111 123" -> "[REDACTED_CREDIT_CARD] 123"
+
+    Every start position is checked, not just the first match from the left: a
+    number in front of a card can form a valid span that ends inside the card
+    ("123456789 4831 ..."), and taking only that span would leave the rest of
+    the card in clear text. Overlapping spans are merged into one placeholder,
+    so a nearby number may be hidden too: hiding too much is safe, showing a
+    card is not.
     """
     parts = re.split(r"([ -])", run)   # "4111 1111 123" -> ["4111", " ", "1111", " ", "123"]
     groups = parts[0::2]               # ["4111", "1111", "123"]
     seps = parts[1::2]                 # [" ", " "]
 
-    out: list[str] = []
-    i = 0
-    while i < len(groups):
-        best_end = None
+    # 1. Every valid span (first group, last group), from every start position.
+    spans: list[tuple[int, int]] = []
+    for i in range(len(groups)):
         digits = ""
-        for j in range(i, len(groups)):          # extend the span one group at a time
+        for j in range(i, len(groups)):           # extend the span one group at a time
             digits += groups[j]
             if len(digits) > 19:                  # too long to be a card
                 break
             if len(digits) >= 13 and _luhn_ok(digits):
-                best_end = j                      # longest valid span so far
+                spans.append((i, j))
 
-        if best_end is None:                      # no card starts here: keep this group
-            out.append(groups[i])
-            last = i
-        else:                                     # card found: replace the whole span
+    # 2. Merge spans that share a group (adjacent cards stay separate).
+    regions: list[list[int]] = []
+    for first, last in sorted(spans):
+        if regions and first <= regions[-1][1]:
+            regions[-1][1] = max(regions[-1][1], last)
+        else:
+            regions.append([first, last])
+    region_end = {first: last for first, last in regions}
+
+    # 3. Rebuild the text: one placeholder per region, everything else unchanged.
+    out: list[str] = []
+    i = 0
+    while i < len(groups):
+        if i in region_end:                       # a card (or overlapping cards) starts here
             card = RedactionType.CREDIT_CARD
             counts[card.value] = counts.get(card.value, 0) + 1
             out.append(card.placeholder)
-            last = best_end
-
+            last = region_end[i]
+        else:                                     # not part of a card: keep the group
+            out.append(groups[i])
+            last = i
         if last < len(seps):                      # keep the separator after it
             out.append(seps[last])
         i = last + 1

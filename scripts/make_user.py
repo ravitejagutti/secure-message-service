@@ -19,7 +19,9 @@ USERS_FILE = Path(__file__).resolve().parents[1] / "config" / "users.json"
 
 
 def main() -> None:
-    username = sys.argv[1] if len(sys.argv) > 1 else "alice"
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python scripts/make_user.py <username>")
+    username = sys.argv[1]
 
     password = secrets.token_urlsafe(12)   # 16 characters, well under bcrypt's 72-byte limit
     token = secrets.token_urlsafe(32)      # 43 characters of random data
@@ -41,7 +43,7 @@ def main() -> None:
     print(f"username : {username}")
     print(f"password : {password}")
     print(f"api token: {token}")
-    print("Save these now: only their hashes are stored. Restart the server to load them.")
+    print("Save these now: only their hashes are stored. A running server picks them up on the next request.")
 
 
 if __name__ == "__main__":

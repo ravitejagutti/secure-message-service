@@ -6,3 +6,9 @@ httpx
 pytest-html
 cryptography
 pre-commit
+testcontainers
+python-dotenv
+nox
+pytest-xdist
+allure-pytest
+pytest-rerunfailures

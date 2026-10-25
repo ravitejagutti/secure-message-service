@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: unit-tests
         name: unit tests (pytest -m unit)
-        # -o addopts= : skip the HTML report and Playwright options from pytest.ini;
+        # -o addopts= : skip the Playwright options from pytest.ini;
         # the unit tests need neither, and a commit should stay fast and quiet.
         entry: python -m pytest -m unit -q -o addopts=
         language: system      # uses the python of your active venv

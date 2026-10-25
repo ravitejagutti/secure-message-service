@@ -37,27 +37,46 @@ class User:
 
 
 class UserStore:
-    def __init__(self, users: list[User]):
+    """The preloaded users, reloaded automatically when the users file changes.
+
+    Before each login check, the file's modification time is compared with the
+    last load (one cheap filesystem call); if it changed, the file is read again.
+    So adding, changing or removing a user (e.g. with scripts/make_user.py) takes
+    effect on the next request, without restarting the server.
+    """
+
+    def __init__(self, users: list[User], path: str | None = None):
         self._users = users
+        self._path = Path(path) if path else None
+        self._mtime = self._path.stat().st_mtime_ns if self._path else None
+
+    @staticmethod
+    def _read(path: Path) -> list[User]:
+        raw = json.loads(path.read_text())
+        return [User(u["username"], u["password_bcrypt"], u["api_token_sha256"]) for u in raw]
 
     @classmethod
     def load(cls, path: str) -> "UserStore":
-        raw = json.loads(Path(path).read_text())
-        users = [
-            User(u["username"], u["password_bcrypt"], u["api_token_sha256"])
-            for u in raw
-        ]
-        return cls(users)
+        return cls(cls._read(Path(path)), path)
+
+    def _current_users(self) -> list[User]:
+        """The users, re-read first if the file changed since the last load."""
+        if self._path is not None:
+            mtime = self._path.stat().st_mtime_ns
+            if mtime != self._mtime:
+                self._users = self._read(self._path)
+                self._mtime = mtime
+        return self._users
 
     def find_by_token(self, token: str) -> User | None:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        for user in self._users:
+        for user in self._current_users():
             if hmac.compare_digest(user.api_token_sha256, token_hash):
                 return user
         return None
 
     def verify_password(self, username: str, password: str) -> bool:
-        for user in self._users:
+        for user in self._current_users():
             if user.username == username:
                 return bcrypt.checkpw(password.encode(), user.password_bcrypt.encode())
         # No such user: still run bcrypt so a missing-username response takes
