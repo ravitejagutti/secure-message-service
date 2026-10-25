@@ -8,6 +8,7 @@ config/users.json
 *.db
 
 .venv/
+.nox/
 venv/
 
 reports/

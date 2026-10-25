@@ -9,6 +9,8 @@ the pinned cert in the API suite
 
 Pages come from pytest-playwright's own `page` fixture, so its options apply:
 tracing and screenshots on failure (set in pytest.ini), --headed, --slowmo.
+The shared browser settings and the `logged_in_page` fixture are in
+tests/ui/conftest.py.
 """
 
 from __future__ import annotations
@@ -20,26 +22,6 @@ from playwright.sync_api import Error as PlaywrightError
 from tests.sample_data import PLACEHOLDERS, RAW_VALUES, sensitive_message
 
 pytestmark = pytest.mark.ui
-
-
-@pytest.fixture(scope="session")
-def browser_context_args(browser_context_args, server_url, username, password):
-    """Settings for every browser context pytest-playwright creates for a test."""
-    return {
-        **browser_context_args,
-        "base_url": server_url,                  # page.goto("/") -> https://localhost:8443/
-        "http_credentials": {"username": username, "password": password},  # answers the login prompt
-        "ignore_https_errors": True,             # our self-signed certificate
-    }
-
-
-@pytest.fixture
-def logged_in_page(page: Page) -> Page:
-    """A fresh, logged-in tab in its own context (like a new incognito window).
-
-    pytest-playwright creates and closes it, and records a trace if the test fails.
-    """
-    return page
 
 
 def _row(page: Page, message_id: int):

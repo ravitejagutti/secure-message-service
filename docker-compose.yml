@@ -1,6 +1,33 @@
 services:
+  # One-time setup, so running the app needs only Docker: runs before the app,
+  # creates what's missing, then exits. Never overwrites existing files.
+  init:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./certs:/app/certs
+      - ./config:/app/config
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -f certs/server.crt ]; then
+          echo "init: creating the self-signed certificate"
+          pip install --quiet --disable-pip-version-check --root-user-action=ignore cryptography
+          python scripts/gen_certs.py
+        fi
+        if [ ! -f config/users.json ]; then
+          cp config/users.example.json config/users.json
+          echo "init: WARNING: created config/users.json with the DEMO users (public credentials,"
+          echo "init: local use only). Create your own with: python scripts/make_user.py <name>"
+        fi
+
   app:
     build: .
+    depends_on:
+      init:
+        condition: service_completed_successfully   # start only after init succeeded
     ports:
       - "8443:8443"
     volumes:
@@ -11,7 +38,7 @@ services:
     environment:
       - DB_PATH=data/messages.db
       - AUDIT_LOG_FILE=logs/audit.log
-      # Overridable so test runs can use config/users.example.json (scripts/run_tests.py)
+      # Overridable: the tests start the server with config/users.example.json (tests/test.env)
       - USERS_FILE=${USERS_FILE:-config/users.json}
       - SSL_CERTFILE=certs/server.crt
       - SSL_KEYFILE=certs/server.key

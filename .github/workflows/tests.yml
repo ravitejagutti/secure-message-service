@@ -1,9 +1,11 @@
 # CI pipeline: runs on GitHub's Linux machines for pull requests (not drafts)
 # and for pushes to main (i.e. after a merge).
-#   unit        -> fast tests, no server (~1 min)
-#   integration -> only if unit passed: builds the Docker image, starts the
-#                  server, runs the API, CLI and Playwright tests, stops it
-# Reports are uploaded as a downloadable artifact on each run's page.
+#
+# One job, the same command as on a laptop: `nox`
+#   unit         -> fast tests, no server; if they fail, nox stops here (fast feedback)
+#   integration  -> starts the server, API + CLI + UI tests (parallel, then serial), stops it
+# One Allure report for all of them, plus the logs, is uploaded as a
+# downloadable artifact on each run's page.
 name: tests
 
 on:
@@ -17,8 +19,8 @@ permissions:
   contents: read
 
 jobs:
-  unit:
-    # Skip draft PRs; integration is skipped too, since it needs unit.
+  tests:
+    # Skip draft PRs.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
@@ -30,38 +32,21 @@ jobs:
           cache-dependency-path: |
             requirements-dev.txt
             server/requirements.txt
-      - name: Install test dependencies
-        run: python -m pip install -r requirements-dev.txt
-      - name: Unit tests
-        run: python scripts/run_tests.py unit
+      - uses: actions/setup-node@v4          # for the Allure report tool
+        with:
+          node-version: "20"
+      - name: Install nox and Allure
+        run: |
+          python -m pip install nox
+          npm install -g allure
+      - name: Unit, then API + CLI + UI tests
+        # The tests create the self-signed certificate, start the server with the
+        # demo user (tests/test.env) and stop it. Chromium is installed with its
+        # system libraries, since CI is set on GitHub's machines.
+        run: nox
       - name: Upload reports
-        if: always()
+        if: always()                         # also (especially) when tests failed
         uses: actions/upload-artifact@v4
         with:
-          name: unit-reports
-          path: reports/
-
-  integration:
-    needs: unit                     # quality gate: skipped if a unit test fails
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            requirements-dev.txt
-            server/requirements.txt
-      - name: Full run, exactly as in the README (fresh machine)
-        # --install: test dependencies, Chromium and the self-signed cert. Then
-        # unit tests again (~1 s), start the server, API + CLI + UI tests, stop it.
-        # No MSG_* variables are set, so the server uses the demo user
-        # (config/users.example.json).
-        run: python scripts/run_tests.py --install
-      - name: Upload reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-reports
+          name: test-reports
           path: reports/

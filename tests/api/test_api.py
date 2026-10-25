@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # ---------- create / read ----------
 
 # Request:  POST /api/messages {"content": "<tag> hello"}
-# Expected: 201, body has the same content, author == "alice", redactions == {},
+# Expected: 201, body has the same content, author == the logged-in user, redactions == {},
 #           an integer id and a created_at timestamp
 def test_create_message_returns_201_with_details(api, username, unique_tag, created_ids):
     response = api.post("/api/messages", json={"content": f"{unique_tag} hello"})
@@ -75,6 +75,7 @@ def test_list_returns_newest_first(api, create_message, unique_tag):
 
 # Request:  GET /api/messages?limit=1&offset=0, then ?limit=1&offset=1
 # Expected: one message each; page 1 has the higher (newer) id
+@pytest.mark.serial   # page 1 and page 2 shift if another test creates a message in between
 def test_list_supports_limit_and_offset(api, create_message, unique_tag):
     create_message(f"{unique_tag} a")
     create_message(f"{unique_tag} b")
@@ -128,6 +129,7 @@ def test_sensitive_data_is_redacted_in_api_responses(api, create_message, unique
 # Request:  POST a message containing a JWT, email, IPv4 and card
 # Check:    read data/messages.db directly with sqlite3, bypassing the API
 # Expected: the stored content has no raw values and equals the API response content
+@pytest.mark.serial   # reads the SQLite file directly, which isn't safe while the server writes to it
 def test_raw_values_never_reach_the_database(create_message, unique_tag, db_path):
     created = create_message(sensitive_message(unique_tag))
     # Fail, never skip: if this check can't run, the suite must not go green.
@@ -265,6 +267,7 @@ def test_self_signed_cert_is_trusted_only_when_pinned(server_url, tls):
 # Setup:    create a message, run "docker compose restart", wait for /healthz
 # Expected: GET /api/messages/{id} returns 200 with the same message
 @pytest.mark.skipif(shutil.which("docker") is None, reason="docker CLI not available")
+@pytest.mark.serial   # restarts the server under any test running at the same time
 def test_message_survives_container_restart(api, create_message, unique_tag):
     message = create_message(f"{unique_tag} survive restart")
 
@@ -283,7 +286,7 @@ def test_message_survives_container_restart(api, create_message, unique_tag):
 # Expected: lines for message.created, message.deleted (with who deleted it) and auth.failed;
 #           the message text and raw values never appear in the log
 def test_audit_log_records_events_without_content(api, server_url, tls, username, unique_tag):
-    audit_log = Path(os.environ.get("MSG_AUDIT_LOG", PROJECT_ROOT / "logs" / "audit.log"))
+    audit_log = PROJECT_ROOT / os.environ["MSG_AUDIT_LOG"]   # default in tests/test.env
 
     response = api.post("/api/messages", json={"content": sensitive_message(unique_tag)})
     assert response.status_code == 201
@@ -314,7 +317,8 @@ def test_audit_log_records_events_without_content(api, server_url, tls, username
         assert raw not in logs
 
 
-def _wait_until_healthy(api: httpx.Client, timeout: float = 60.0) -> None:
+def _wait_until_healthy(api: httpx.Client) -> None:
+    timeout = float(os.environ["MSG_SERVER_START_TIMEOUT"])   # default in tests/test.env
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:

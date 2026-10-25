@@ -182,6 +182,36 @@ def test_card_next_to_other_digits_is_redacted(text, expected):
     assert result.counts == {"CREDIT_CARD": 1}
 
 
+# A number in front of a card can form a Luhn-valid span that ends inside the
+# card. Taking only that span used to leave the rest of the card in clear text.
+# Input:    "Ref 12 4088 9957 9032 8924 99 paid"     ("12 4088 9957 9032" also passes Luhn)
+# Expected: "Ref [REDACTED_CREDIT_CARD] 99 paid"
+# Input:    "Ref 123456789 4831 0122 2834 5981 paid" ("123456789 4831" also passes Luhn)
+# Expected: "Ref [REDACTED_CREDIT_CARD] paid"
+# counts == {"CREDIT_CARD": 1} in each case; no digit of the card remains
+@pytest.mark.parametrize(
+    "text, expected, card",
+    [
+        (
+            "Ref 12 4088 9957 9032 8924 99 paid",
+            "Ref [REDACTED_CREDIT_CARD] 99 paid",
+            "4088 9957 9032 8924",
+        ),
+        (
+            "Ref 123456789 4831 0122 2834 5981 paid",
+            "Ref [REDACTED_CREDIT_CARD] paid",
+            "4831 0122 2834 5981",
+        ),
+    ],
+)
+def test_card_overlapping_a_valid_span_before_it_is_fully_redacted(text, expected, card):
+    result = redact(text)
+    assert result.text == expected
+    assert result.counts == {"CREDIT_CARD": 1}
+    for group in card.split():
+        assert group not in result.text
+
+
 # Input:    "Split it across 4111 1111 1111 1111 5500 0000 0000 0004 please"
 # Expected: "Split it across [REDACTED_CREDIT_CARD] [REDACTED_CREDIT_CARD] please"
 #           counts == {"CREDIT_CARD": 2}

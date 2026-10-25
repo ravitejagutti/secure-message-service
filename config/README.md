@@ -1,4 +1,4 @@
-`users.example.json` is a sample credentials file, loaded via `USERS_FILE`. Copy it to `users.json` to try the service locally.
+`users.example.json` is a sample credentials file, loaded via `USERS_FILE`. On the first `docker compose up`, the `init` container copies it to `users.json` if that file doesn't exist yet (it never overwrites it).
 
 Demo credentials for `alice` (do not reuse anywhere real):
 - Password (HTTP Basic, for the web page): `changeme`
@@ -10,7 +10,12 @@ To create your own user instead (prints a new password and token once, stores on
 
 ```bash
 python scripts/make_user.py alice
-docker compose restart
 ```
 
-Test runs started with `scripts/run_tests.py` use `users.example.json` unless `MSG_USER`, `MSG_PASSWORD` and `MSG_TOKEN` are set (see the main README).
+A running server picks up changes to `users.json` on the next request; no restart is needed.
+
+- **Add a user, or give one a new password and token:** `make_user.py <name>`.
+- **Remove a user** (revoke their access): delete their entry from `users.json`.
+- **Don't copy an existing entry** to add a user: the file holds hashes, so the copy would share the original user's password and token.
+
+When the tests start the server themselves, it uses `users.example.json` (set in `tests/test.env`). When you start it, it uses `users.json` (see the main README).
