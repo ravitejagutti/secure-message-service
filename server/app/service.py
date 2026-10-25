@@ -2,11 +2,14 @@
 redact() first, so the repository never sees raw content."""
 
 import json
+import logging
 import sqlite3
 from datetime import datetime, timezone
 
 from .redaction import redact
 from .repository import MessageRepository
+
+logger = logging.getLogger(__name__)
 
 
 class MessageService:
@@ -14,6 +17,7 @@ class MessageService:
         self._repository = repository
 
     def create(self, content: str, author: str) -> dict:
+        logger.info("Creating message from %s: %s", author, content)
         result = redact(content)
         created_at = datetime.now(timezone.utc).isoformat()
         row = self._repository.insert(result.text, author, result.counts, created_at)
