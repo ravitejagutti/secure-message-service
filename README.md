@@ -107,7 +107,7 @@ nox -s ui -- --headed --slowmo 1000      # anything after -- goes to pytest: her
 
 **Pre-commit hook:** the unit tests also run before every `git commit` and block it if one fails. Enable it once per clone, with the venv active: `pre-commit install`.
 
-**CI:** GitHub Actions (`.github/workflows/tests.yml`) runs `nox` in one job on every pull request (drafts skipped) and on pushes to `main`, on a fresh Linux machine. The `tests` check is required before merging. The Allure report and logs are attached to each run (artifact `test-reports`).
+**CI:** GitHub Actions (`.github/workflows/tests.yml`) runs `nox` in one job on every pull request (drafts skipped) and on pushes to `main`, on a fresh Linux machine. The `tests` check is required before merging. The Allure report and logs are attached to each run (artifact `test-reports`). Two more workflows use Claude: `claude-code-review.yml` reviews each pull request and posts inline comments (drafts skipped), and `claude.yml` answers when someone writes `@claude` in an issue or PR comment. Both are read-only and need the `CLAUDE_CODE_OAUTH_TOKEN` repo secret.
 
 | Suite | What it checks |
 | --- | --- |
